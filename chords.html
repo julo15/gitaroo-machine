@@ -27,9 +27,9 @@
             </div>
             <div class="row">
                 <center><h1 style="font-size: 1000%">
-                    <div id="currentChord" class="chord" style="color: green">Hi!</div>
+                    <div id="currentChord" class="chord" style="color: green">Press</div>
                     <span>&rarr;</span>
-                    <div id="nextChord" class="chord" style="color: #4B90DE">world!</div></h1></center>
+                    <div id="nextChord" class="chord" style="color: #4B90DE">play!</div></h1></center>
             </div>
             <!--
             <div class="row">
@@ -51,7 +51,7 @@
             </div>
             <div class="row">
                 <center>
-                    Speed <input id="speedSlider" data-slider-id='ex1Slider' type="text" data-slider-min="200" data-slider-max="1500" data-slider-step="50" data-slider-value="14"/>
+                    Speed <input id="speedSlider" data-slider-id='ex1Slider' type="text" data-slider-min="200" data-slider-max="3000" data-slider-step="10" data-slider-value="14"/>
                 </center>
             </div>
             <div class="row">
@@ -64,9 +64,32 @@
                     </button>
                 </center>
             </div>
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="input-group">
+                        <span class="input-group-addon" id="basic-addon1">Beat 1</span>
+                        <input id="beatInput1" type="text" class="beat-input form-control" placeholder=".mp3 url" aria-describedby="basic-addon1">
+                    </div>
+                    <div class="input-group">
+                        <span class="input-group-addon" id="basic-addon1">Beat 2</span>
+                        <input id="beatInput2" type="text" class="beat-input form-control" placeholder=".mp3 url" aria-describedby="basic-addon1">
+                    </div>
+                    <div class="input-group">
+                        <span class="input-group-addon" id="basic-addon1">Beat 3</span>
+                        <input id="beatInput3" type="text" class="beat-input form-control" placeholder=".mp3 url" aria-describedby="basic-addon1">
+                    </div>
+                    <div class="input-group">
+                        <span class="input-group-addon" id="basic-addon1">Beat 4</span>
+                        <input id="beatInput4" type="text" class="beat-input form-control" placeholder=".mp3 url" aria-describedby="basic-addon1">
+                    </div>
+                </div>
+            </div>
         </div>
         
         <script>
+
+            var LOCAL_STORAGE_BEAT_URLS = "beatUrls";
+            var LOCAL_STORAGE_SPEED = "speed";
                         
             var countSpans = [
                 $("#count1"),
@@ -80,7 +103,7 @@
                 "Bb", "B7", "Bm", 
                 "C", "C7", "Cmaj7",
                 "D", "D7", "Dm", "Dm7", "Dmaj7", 
-                "E", "E7", "Em", "Em7",
+                "E", "E7", "Em", "Em7", "Emaj7",
                 "F", "Fmaj7",
                 "G", "G7" 
             ];
@@ -108,9 +131,10 @@
                     if (now - lastCountTime >= slider.getValue()) {
                         
                         if (!muted) {
-                            beat.pause();
-                            beat.currentTime = 0;
-                            beat.play();
+                            var previousBeat = (currentCount + countSpans.length - 1) % countSpans.length;
+                            beats[previousBeat].pause();
+                            beats[currentCount].currentTime = 0;
+                            beats[currentCount].play();
                         }
                         
                         if (currentCount == 0) {
@@ -127,8 +151,61 @@
                 }, 10);
             }
 
-            var beat = new Audio('http://soundbible.com/grab.php?id=783&type=mp3');
-            
+            function syncPlayButtonGlyph(isPaused) {
+
+                var pauseGlyphClass = "glyphicon-pause";
+                var playGlyphClass = "glyphicon-play";
+
+                playButtonGlyph
+                    .removeClass(isPaused ? pauseGlyphClass : playGlyphClass)
+                    .addClass(isPaused ? playGlyphClass : pauseGlyphClass);
+            }
+
+            function loadBeats() {
+                beats = [];
+                enumerateBeatInputs(function(inputInfo) {
+                    var url = inputInfo.text;
+                    if (url.length == 0) {
+                        url = 'http://soundbible.com/grab.php?id=783&type=mp3';
+                    }
+                    beats[inputInfo.index] = new Audio(url);
+                });
+            }
+
+            function enumerateBeatInputs(visitFunc) {
+                for (var i = 0; i < 4; i++) {
+                    var input = $('#beatInput' + (i + 1));
+                    var text = input.val();
+                    visitFunc({
+                        index: i, // zero-based index
+                        input: input,
+                        text: text
+                    });
+                }
+            }
+
+            function loadBeatUrls() {
+                var beatUrls = [];
+                var beatUrlsFromStorage = localStorage.getItem(LOCAL_STORAGE_BEAT_URLS);
+                if (beatUrlsFromStorage !== null) {
+                    beatUrls = JSON.parse(beatUrlsFromStorage);
+                }
+
+                enumerateBeatInputs(function(inputInfo) {
+                    inputInfo.input.val(beatUrls[inputInfo.index]);
+                });
+            }
+
+            function loadSpeed() {
+                var speed = localStorage.getItem(LOCAL_STORAGE_SPEED);
+                if (speed !== null) {
+                    var speedValue = parseInt(speed);
+                    slider.setValue(speedValue);
+                }
+            }
+
+            var beats;
+
             // Speed slider
 
             var slider = $('#speedSlider').slider({
@@ -136,8 +213,9 @@
                     return value + "ms per beat";
                 }
             }).on("slide", function() {
+                localStorage.setItem(LOCAL_STORAGE_SPEED, slider.getValue());
             }).data("slider");
-            slider.setValue(400);
+            //slider.setValue(400);
 
             // Size slider
 
@@ -150,12 +228,10 @@
             }).data('slider');
 
             // Play button
-            var paused = false;
+
+            var paused = true;
             var playButtonGlyph = $('#playButtonGlyph');
             $('#playButton').click(function() {
-                var pauseGlyphClass = "glyphicon-pause";
-                var playGlyphClass = "glyphicon-play";
-
                 paused = !paused;
 
                 if (paused) {
@@ -164,9 +240,7 @@
                     interval = setMusicInterval();
                 }
 
-                playButtonGlyph
-                    .removeClass(paused ? pauseGlyphClass : playGlyphClass)
-                    .addClass(paused ? playGlyphClass : pauseGlyphClass);
+                syncPlayButtonGlyph(paused);
             });
 
             // Sound button
@@ -182,9 +256,24 @@
                 muted = !muted;
             });
 
-            setNextChord();
+            // Beat inputs
 
-            interval = setMusicInterval();
+            $('.beat-input').change(function() {
+                var urls = [];
+                enumerateBeatInputs(function(inputInfo) {
+                    urls[inputInfo.index] = inputInfo.text;
+                });
+                localStorage.setItem(LOCAL_STORAGE_BEAT_URLS, JSON.stringify(urls));
+
+                loadBeats();
+            });
+
+            setNextChord();
+            loadSpeed();
+            loadBeatUrls();
+            loadBeats();
+            //interval = setMusicInterval();
+            syncPlayButtonGlyph(paused);
             
         </script>
         
