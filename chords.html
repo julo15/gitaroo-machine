@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <!-- Latest compiled and minified CSS -->
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" integrity="sha384-1q8mTJOASx8j1Au+a5WDVnPi2lkFfwwEAa8hDDdjZlpLegxhjVME1fgjWPGmkzs7" crossorigin="anonymous">
+        
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.2.4/jquery.min.js"></script>
+        
+        <!-- Slider -->
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-slider/7.1.0/css/bootstrap-slider.min.css">
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-slider/7.1.0/bootstrap-slider.min.js"></script>
+        
+        <style>
+            .chord {
+                width: 3em;
+                display: inline-block;
+            }
+        </style>
+
+    </head>
+    <body>
+        <div class="container">
+            <div class="row" style="position: fixed; bottom: 0">
+                <center>
+                    Font <input id="sizeSlider" data-slider-id='ex1Slider' type="text" data-slider-min="0.2" data-slider-max="2" data-slider-step="0.2" data-slider-value="1"/>
+                </center>
+            </div>
+            <div class="row">
+                <center><h1 style="font-size: 1000%">
+                    <div id="currentChord" class="chord" style="color: green">Hi!</div>
+                    <span>&rarr;</span>
+                    <div id="nextChord" class="chord" style="color: #4B90DE">world!</div></h1></center>
+            </div>
+            <!--
+            <div class="row">
+                <center>
+                    <h2>Next:</h2>
+                    <h1 id="nextChord" style="color: blue">world!</h1>
+                </center>
+            </div>
+            -->
+            <div class="row">
+                <center>
+                    <h1>
+                        <span id="count1">1</span>
+                        <span id="count2">2</span>
+                        <span id="count3">3</span>
+                        <span id="count4">4</span>
+                    </h1>
+                </center>
+            </div>
+            <div class="row">
+                <center>
+                    Speed <input id="speedSlider" data-slider-id='ex1Slider' type="text" data-slider-min="200" data-slider-max="1500" data-slider-step="50" data-slider-value="14"/>
+                </center>
+            </div>
+            <div class="row">
+                <center>
+                    <button id="playButton" type="button" class="btn btn-default">
+                        <span id="playButtonGlyph" class="glyphicon glyphicon-pause" aria-hidden="true"></span>
+                    </button>
+                    <button id="soundButton" type="button" class="btn btn-default">
+                        <span id="soundButtonGlyph" class="glyphicon glyphicon-volume-up" aria-hidden="true"></span>
+                    </button>
+                </center>
+            </div>
+        </div>
+        
+        <script>
+                        
+            var countSpans = [
+                $("#count1"),
+                $("#count2"),
+                $("#count3"),
+                $("#count4")
+            ];
+            
+            var chords = [
+                "A", "A7", "Am", "Am7", "Amaj7",
+                "Bb", "B7", "Bm", 
+                "C", "C7", "Cmaj7",
+                "D", "D7", "Dm", "Dm7", "Dmaj7", 
+                "E", "E7", "Em", "Em7",
+                "F", "Fmaj7",
+                "G", "G7" 
+            ];
+            
+            var interval;
+            var currentCount = 0;
+            var nextChord;
+            var lastCountTime;
+            
+            function setNextChord() {
+                var i = Math.floor(Math.random() * chords.length);
+                nextChord = chords[i];
+            }
+            
+            function highlightCount(count) {
+                for (var i = 0; i < countSpans.length; i++) {
+                    countSpans[i].css("color", (i == count) ? "red" : "black");
+                }
+            }
+
+            function setMusicInterval() {
+                lastCountTime = new Date();
+                return setInterval(function() {
+                    var now = new Date();
+                    if (now - lastCountTime >= slider.getValue()) {
+                        
+                        if (!muted) {
+                            beat.pause();
+                            beat.currentTime = 0;
+                            beat.play();
+                        }
+                        
+                        if (currentCount == 0) {
+                            $("#currentChord").text(nextChord);
+                            setNextChord();
+                            $("#nextChord").text(nextChord);
+                        }
+                        
+                        highlightCount(currentCount);
+                        currentCount = (currentCount + 1) % countSpans.length;
+                        
+                        lastCountTime.setMilliseconds(lastCountTime.getMilliseconds() + slider.getValue());
+                    }
+                }, 10);
+            }
+
+            var beat = new Audio('http://soundbible.com/grab.php?id=783&type=mp3');
+            
+            // Speed slider
+
+            var slider = $('#speedSlider').slider({
+                formatter: function(value) {
+                    return value + "ms per beat";
+                }
+            }).on("slide", function() {
+            }).data("slider");
+            slider.setValue(400);
+
+            // Size slider
+
+            var sizeSlider = $('#sizeSlider').slider({
+                formatter: function(value) {
+                    return value + 'em';
+                }
+            }).on('slide', function() {
+                $('.chord').css('font-size', sizeSlider.getValue() + 'em');
+            }).data('slider');
+
+            // Play button
+            var paused = false;
+            var playButtonGlyph = $('#playButtonGlyph');
+            $('#playButton').click(function() {
+                var pauseGlyphClass = "glyphicon-pause";
+                var playGlyphClass = "glyphicon-play";
+
+                paused = !paused;
+
+                if (paused) {
+                    clearInterval(interval);
+                } else {
+                    interval = setMusicInterval();
+                }
+
+                playButtonGlyph
+                    .removeClass(paused ? pauseGlyphClass : playGlyphClass)
+                    .addClass(paused ? playGlyphClass : pauseGlyphClass);
+            });
+
+            // Sound button
+
+            var muted = false;
+            var soundButtonGlyph = $('#soundButtonGlyph');
+            $('#soundButton').click(function() {
+                if (!muted) {
+                    soundButtonGlyph.removeClass('glyphicon-volume-up').addClass('glyphicon-volume-off');
+                } else {
+                    soundButtonGlyph.removeClass('glyphicon-volume-off').addClass('glyphicon-volume-up');
+                }
+                muted = !muted;
+            });
+
+            setNextChord();
+
+            interval = setMusicInterval();
+            
+        </script>
+        
+    </body>
+</html>
